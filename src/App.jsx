@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
 import Registro from "./pages/Registro";
 import Dashboard from "./pages/Dashboard";
+import RegistrarObra from "./pages/RegistrarObra";
 import RutaProtegida from "./components/RutaProtegida";
 import "./App.css";
 
@@ -16,6 +17,14 @@ function App() {
             element={
               <RutaProtegida>
                 <Dashboard />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/registrar-obra"
+            element={
+              <RutaProtegida>
+                <RegistrarObra />
               </RutaProtegida>
             }
           />
