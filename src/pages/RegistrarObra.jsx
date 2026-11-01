@@ -10,6 +10,13 @@ const estadoInicial = {
   autor: "",
 };
 
+const pasoEsValido = (paso, datos) => {
+  if (paso === 0) return datos.archivo !== null;
+  if (paso === 1)
+    return datos.titulo.trim().length >= 5 && datos.categoria !== "";
+  return true;
+};
+
 export default function RegistrarObra() {
   const [paso, setPaso] = useState(0);
   const [datos, setDatos] = useState(estadoInicial);
@@ -17,6 +24,7 @@ export default function RegistrarObra() {
   const actualizar = (campos) => setDatos((prev) => ({ ...prev, ...campos }));
   const siguiente = () => setPaso((p) => Math.min(p + 1, PASOS.length - 1));
   const atras = () => setPaso((p) => Math.max(p - 1, 0));
+  const puedeAvanzar = pasoEsValido(paso, datos);
 
   return (
     <div className="mx-auto max-w-xl p-6">
@@ -42,7 +50,8 @@ export default function RegistrarObra() {
         {paso < PASOS.length - 1 && (
           <button
             onClick={siguiente}
-            className="rounded bg-blue-600 px-4 py-2 text-white"
+            disabled={!puedeAvanzar}
+            className="rounded bg-blue-600 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-40"
           >
             Siguiente
           </button>
@@ -132,6 +141,11 @@ function PasoMetadatos({ datos, actualizar }) {
           className="mt-1 w-full rounded border p-2"
         />
       </div>
+      {datos.titulo.trim().length > 0 && datos.titulo.trim().length < 5 && (
+        <p role="alert" className="text-sm text-red-600">
+          El título debe tener al menos 5 caracteres.
+        </p>
+      )}
     </div>
   );
 }
