@@ -20,10 +20,41 @@ const pasoEsValido = (paso, datos) => {
 export default function RegistrarObra() {
   const [paso, setPaso] = useState(0);
   const [datos, setDatos] = useState(estadoInicial);
+  const [folio, setFolio] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState("");
 
   const actualizar = (campos) => setDatos((prev) => ({ ...prev, ...campos }));
   const siguiente = () => setPaso((p) => Math.min(p + 1, PASOS.length - 1));
   const atras = () => setPaso((p) => Math.max(p - 1, 0));
+  const enviar = async () => {
+    setEnviando(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.append("archivo", datos.archivo);
+      formData.append("titulo", datos.titulo);
+      formData.append("categoria", datos.categoria);
+      formData.append("descripcion", datos.descripcion);
+      formData.append("autor", datos.autor);
+
+      const res = await fetch("http://localhost:4000/obras", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Error del servidor");
+
+      const obra = await res.json();
+      setFolio(obra.folio);
+      setPaso(3);
+    } catch {
+      setError(
+        "No se pudo registrar la obra. Revisa que el servidor esté corriendo en el puerto 4000.",
+      );
+    } finally {
+      setEnviando(false);
+    }
+  };
   const puedeAvanzar = pasoEsValido(paso, datos);
 
   return (
@@ -36,18 +67,21 @@ export default function RegistrarObra() {
         {paso === 0 && <PasoArchivo datos={datos} actualizar={actualizar} />}
         {paso === 1 && <PasoMetadatos datos={datos} actualizar={actualizar} />}
         {paso === 2 && <PasoVistaPrevia datos={datos} />}
-        {paso === 3 && <PasoConfirmacion />}
+        {paso === 3 && <PasoConfirmacion folio={folio} />}
       </div>
 
       <div className="flex justify-between">
-        <button
-          onClick={atras}
-          disabled={paso === 0}
-          className="rounded bg-gray-200 px-4 py-2 disabled:opacity-40"
-        >
-          Atrás
-        </button>
-        {paso < PASOS.length - 1 && (
+        {paso < 3 && (
+          <button
+            onClick={atras}
+            disabled={paso === 0}
+            className="rounded bg-gray-200 px-4 py-2 disabled:opacity-40"
+          >
+            Atrás
+          </button>
+        )}
+
+        {paso < 2 && (
           <button
             onClick={siguiente}
             disabled={!puedeAvanzar}
@@ -56,7 +90,23 @@ export default function RegistrarObra() {
             Siguiente
           </button>
         )}
+
+        {paso === 2 && (
+          <button
+            onClick={enviar}
+            disabled={enviando}
+            className="rounded bg-green-600 px-4 py-2 text-white disabled:opacity-40"
+          >
+            {enviando ? "Registrando..." : "Confirmar registro"}
+          </button>
+        )}
       </div>
+
+      {error && (
+        <p role="alert" className="mt-4 text-sm text-red-600">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -177,8 +227,11 @@ function PasoVistaPrevia({ datos }) {
   );
 }
 
-function PasoConfirmacion() {
+function PasoConfirmacion({ folio }) {
   return (
-    <p>Pendiente: aquí mostraremos el folio al conectar con el backend.</p>
+    <div className="text-center">
+      <p className="text-lg">Obra registrada con éxito</p>
+      <p className="mt-2 text-3xl font-bold text-blue-600">{folio}</p>
+    </div>
   );
 }
