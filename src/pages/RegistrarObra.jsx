@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { generarCertificado } from "../utils/generarCertificado";
 
 const PASOS = ["Subir archivo", "Metadatos", "Vista previa", "Confirmación"];
 
@@ -67,7 +68,7 @@ export default function RegistrarObra() {
         {paso === 0 && <PasoArchivo datos={datos} actualizar={actualizar} />}
         {paso === 1 && <PasoMetadatos datos={datos} actualizar={actualizar} />}
         {paso === 2 && <PasoVistaPrevia datos={datos} />}
-        {paso === 3 && <PasoConfirmacion folio={folio} />}
+        {paso === 3 && <PasoConfirmacion folio={folio} datos={datos} />}
       </div>
 
       <div className="flex justify-between">
@@ -227,11 +228,43 @@ function PasoVistaPrevia({ datos }) {
   );
 }
 
-function PasoConfirmacion({ folio }) {
+function PasoConfirmacion({ folio, datos }) {
+  const [descargando, setDescargando] = useState(false);
+
+  const handleDescargar = async () => {
+    try {
+      setDescargando(true);
+      await generarCertificado({
+        folio,
+        titulo: datos.titulo,
+        autor: datos.autor,
+        categoria: datos.categoria,
+        fechaRegistro: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error("Error al descargar certificado:", err);
+    } finally {
+      setDescargando(false);
+    }
+  };
+
   return (
-    <div className="text-center">
-      <p className="text-lg">Obra registrada con éxito</p>
-      <p className="mt-2 text-3xl font-bold text-blue-600">{folio}</p>
+    <div className="space-y-6 text-center">
+      <div>
+        <p className="text-lg font-medium text-emerald-700">Obra registrada con éxito</p>
+        <p className="mt-2 text-3xl font-extrabold text-blue-600 tracking-wider">{folio}</p>
+      </div>
+
+      <div className="pt-2">
+        <button
+          type="button"
+          onClick={handleDescargar}
+          disabled={descargando}
+          className="inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
+        >
+          {descargando ? "Generando PDF..." : "Descargar certificado (PDF)"}
+        </button>
+      </div>
     </div>
   );
 }
