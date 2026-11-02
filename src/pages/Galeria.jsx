@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { generarCertificado } from "../utils/generarCertificado";
 
 /**
  * Galería de Obras Registradas (Práctica 5)
@@ -8,9 +9,11 @@ import { useState, useEffect, useMemo } from "react";
  *    - Búsqueda en tiempo real combinada con filtro de categorías y ordenamiento cronológico.
  *    - Indicadores de estado inmediato: Spinner de carga durante petición y estado vacío explicativo
  *      con botón de restablecimiento ("Limpiar filtros") cuando no hay resultados coincidentes.
+ *    - Diálogo modal con control de foco, cierre mediante botón accesible o tecla Escape, y retroalimentación
+ *      durante la generación del certificado PDF.
  * 2. ISO 9241-171 / W3C (Ergonomía de accesibilidad física y táctil):
  *    - Tamaño mínimo de interacción de 44x44px en controles de formulario (input de búsqueda,
- *      selector de categoría, selector de orden) y botones táctiles interactivos.
+ *      selector de categoría, selector de orden) y botones táctiles interactivos de descarga y cierre.
  */
 
 const CATEGORIAS = ["Todas", "Diseño", "Fotografía", "Escritura", "Cine"];
@@ -24,6 +27,9 @@ export default function Galeria() {
   const [busqueda, setBusqueda] = useState("");
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("Todas");
   const [orden, setOrden] = useState("recientes"); // 'recientes' | 'antiguas'
+
+  // Estado para la vista de detalle en modal
+  const [obraSeleccionada, setObraSeleccionada] = useState(null);
 
   // ISO 9241-110: Retroalimentación y control de estado
   useEffect(() => {
@@ -179,16 +185,28 @@ export default function Galeria() {
           </div>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {obrasFiltradas.map((obra) => (
-              <TarjetaObra key={obra.folio} obra={obra} />
+              <TarjetaObra
+                key={obra.folio}
+                obra={obra}
+                onClick={() => setObraSeleccionada(obra)}
+              />
             ))}
           </div>
         </div>
+      )}
+
+      {/* Modal de Detalle de Obra (Práctica 5 y acceso al Certificado de Práctica 4) */}
+      {obraSeleccionada && (
+        <ModalDetalleObra
+          obra={obraSeleccionada}
+          onCerrar={() => setObraSeleccionada(null)}
+        />
       )}
     </div>
   );
 }
 
-function TarjetaObra({ obra }) {
+function TarjetaObra({ obra, onClick }) {
   const getIcono = (cat) => {
     switch (cat?.toLowerCase()) {
       case "diseño":
@@ -208,7 +226,15 @@ function TarjetaObra({ obra }) {
   return (
     <div
       tabIndex={0}
-      className="group flex flex-col justify-between overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer min-h-[160px]"
+      role="button"
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      className="group flex flex-col justify-between overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-sm hover:shadow-md hover:border-blue-400 transition-all cursor-pointer min-h-[170px] focus:outline-none focus:ring-2 focus:ring-blue-500"
     >
       <div>
         <div className="flex items-center justify-between gap-2">
@@ -227,12 +253,126 @@ function TarjetaObra({ obra }) {
       </div>
 
       <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-        <span className="font-mono">{obra.folio}</span>
+        <span className="font-mono font-medium text-gray-700">{obra.folio}</span>
         <span>
           {obra.fechaRegistro
             ? new Date(obra.fechaRegistro).toLocaleDateString()
             : "—"}
         </span>
+      </div>
+    </div>
+  );
+}
+
+function ModalDetalleObra({ obra, onCerrar }) {
+  const [descargando, setDescargando] = useState(false);
+
+  // Cerrar al presionar tecla Escape (Accesibilidad e ISO 9241-110)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") onCerrar();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onCerrar]);
+
+  const handleDescargar = async () => {
+    try {
+      setDescargando(true);
+      await generarCertificado(obra);
+    } catch (err) {
+      console.error("Error al generar certificado:", err);
+    } finally {
+      setDescargando(false);
+    }
+  };
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="titulo-modal-obra"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
+      onClick={onCerrar}
+    >
+      <div
+        className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl space-y-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Cabecera del modal */}
+        <div className="flex items-start justify-between border-b border-gray-100 pb-3">
+          <div>
+            <span className="inline-block rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+              {obra.categoria || "General"}
+            </span>
+            <h2 id="titulo-modal-obra" className="mt-2 text-xl font-bold text-gray-900">
+              {obra.titulo}
+            </h2>
+          </div>
+          {/* Botón cerrar con tamaño táctil accesible ISO 9241-171 */}
+          <button
+            type="button"
+            onClick={onCerrar}
+            aria-label="Cerrar detalle de obra"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Metadatos completos */}
+        <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 text-sm">
+          <div className="rounded-lg bg-gray-50 p-3">
+            <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Folio Único</dt>
+            <dd className="mt-1 font-mono font-bold text-blue-600">{obra.folio}</dd>
+          </div>
+          <div className="rounded-lg bg-gray-50 p-3">
+            <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Autor Registrado</dt>
+            <dd className="mt-1 font-semibold text-gray-900">{obra.autor || "—"}</dd>
+          </div>
+          <div className="rounded-lg bg-gray-50 p-3">
+            <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha de Registro</dt>
+            <dd className="mt-1 text-gray-800">
+              {obra.fechaRegistro
+                ? new Date(obra.fechaRegistro).toLocaleString("es-MX", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })
+                : "—"}
+            </dd>
+          </div>
+          <div className="rounded-lg bg-gray-50 p-3">
+            <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Archivo Asociado</dt>
+            <dd className="mt-1 truncate text-gray-800" title={obra.nombreOriginal || obra.archivo}>
+              {obra.nombreOriginal || obra.archivo || "—"}
+            </dd>
+          </div>
+          {obra.descripcion && (
+            <div className="sm:col-span-2 rounded-lg bg-gray-50 p-3">
+              <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</dt>
+              <dd className="mt-1 text-gray-700 whitespace-pre-wrap">{obra.descripcion}</dd>
+            </div>
+          )}
+        </dl>
+
+        {/* Acciones del Modal: ISO 9241-171 área mínima 44px */}
+        <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-3 border-t border-gray-100">
+          <button
+            type="button"
+            onClick={onCerrar}
+            className="w-full sm:w-auto min-h-[44px] rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Cerrar
+          </button>
+          <button
+            type="button"
+            onClick={handleDescargar}
+            disabled={descargando}
+            className="w-full sm:w-auto inline-flex min-h-[44px] items-center justify-center rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
+          >
+            {descargando ? "Generando certificado..." : "Descargar certificado (PDF)"}
+          </button>
+        </div>
       </div>
     </div>
   );
