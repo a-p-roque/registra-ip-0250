@@ -12,6 +12,9 @@ function Layout() {
             <Link to="/" className="hover:underline">
               Registro
             </Link>
+            <Link to="/galeria" className="hover:underline">
+              Galería
+            </Link>
             <Link to="/dashboard" className="hover:underline">
               Dashboard
             </Link>

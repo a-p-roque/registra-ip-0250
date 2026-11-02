@@ -3,6 +3,7 @@ import Layout from "./components/Layout";
 import Registro from "./pages/Registro";
 import Dashboard from "./pages/Dashboard";
 import RegistrarObra from "./pages/RegistrarObra";
+import Galeria from "./pages/Galeria";
 import RutaProtegida from "./components/RutaProtegida";
 import "./App.css";
 
@@ -28,6 +29,7 @@ function App() {
               </RutaProtegida>
             }
           />
+          <Route path="/galeria" element={<Galeria />} />
         </Route>
       </Routes>
     </BrowserRouter>
